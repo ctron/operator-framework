@@ -1,6 +1,6 @@
 [package]
 name = "operator-framework"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Jens Reimann <ctron@dentrassi.de>"]
 edition = "2018"
 keywords = ["kubernetes", "operator"]
@@ -12,8 +12,8 @@ description = "Tools and helpers used to create Kubernetes operators"
 anyhow = "1.0"
 log = "0.4"
 
-kube = "0.34"
-kube-derive = "0.34"
+kube = "0.35"
+kube-derive = "0.35"
 
 serde = "1.0"
 serde_derive = "1.0"
@@ -22,6 +22,10 @@ serde_json = "1.0"
 sha1 = "0.6"
 
 k8s-openapi = { version = "0.8" }
+
+[dev-dependencies]
+
+k8s-openapi = { version = "0.8", features = [ "v1_17" ] }
 
 [features]
 
