@@ -19,23 +19,24 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 /// Create or update a Kubernetes resource.
-pub async fn create_or_update<T, S1, S2, F>(
+pub async fn create_or_update_by<T, S1, S2, C, F>(
     api: &Api<T>,
     namespace: Option<S1>,
     name: S2,
+    creator: C,
     mutator: F,
 ) -> Result<()>
 where
     T: Clone + Serialize + DeserializeOwned + Meta<Ty = ObjectMeta> + Default + PartialEq,
     S1: ToString,
     S2: AsRef<str>,
+    C: FnOnce(ObjectMeta) -> T,
     F: FnOnce(T) -> Result<T>,
 {
     match api.get(name.as_ref()).await {
         Err(Error::Api(ae)) if ae.code == 404 => {
             log::debug!("CreateOrUpdate - Err(Api(404))");
-            let object: T = Default::default();
-            object.metadata().replace(&ObjectMeta {
+            let object: T = creator(ObjectMeta {
                 namespace: namespace.map(|s| s.to_string()),
                 name: Some(name.as_ref().to_string()),
                 ..Default::default()
@@ -61,4 +62,32 @@ where
     };
 
     Ok(())
+}
+
+/// Create or update a Kubernetes resource.
+#[cfg(feature = "patched")]
+pub async fn create_or_update<T, S1, S2, F>(
+    api: &Api<T>,
+    namespace: Option<S1>,
+    name: S2,
+    mutator: F,
+) -> Result<()>
+where
+    T: Clone + Serialize + DeserializeOwned + Meta<Ty = ObjectMeta> + Default + PartialEq,
+    S1: ToString,
+    S2: AsRef<str>,
+    F: FnOnce(T) -> Result<T>,
+{
+    create_or_update_by(
+        api,
+        namespace,
+        name,
+        |meta| {
+            let mut object: T = Default::default();
+            object.set_metadata(meta);
+            object
+        },
+        mutator,
+    )
+    .await
 }
