@@ -1,6 +1,6 @@
 [package]
 name = "operator-framework"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Jens Reimann <ctron@dentrassi.de>"]
 edition = "2018"
 keywords = ["kubernetes", "operator"]
