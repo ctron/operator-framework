@@ -11,7 +11,6 @@
  * SPDX-License-Identifier: EPL-2.0
  */
 pub mod install;
-#[cfg(feature = "patched")]
 pub mod process;
 pub mod tracker;
 pub mod utils;

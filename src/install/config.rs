@@ -88,7 +88,14 @@ mod tests {
     fn test_cm_binary() {
         let mut cm: ConfigMap = Default::default();
         let data = [1u8, 2u8, 3u8];
-        cm.append_binary("foo", data.clone());
+        cm.append_binary("foo", &data[..]);
+    }
+
+    #[test]
+    fn test_cm_bigger_binary() {
+        let mut cm: ConfigMap = Default::default();
+        let data = [0u8; 100];
+        cm.append_binary("foo", &data[..]);
     }
 
     #[test]

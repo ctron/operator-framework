@@ -34,8 +34,8 @@ where
     match api.get(name.as_ref()).await {
         Err(Error::Api(ae)) if ae.code == 404 => {
             log::debug!("CreateOrUpdate - Err(Api(404))");
-            let mut object: T = Default::default();
-            object.set_metadata(ObjectMeta {
+            let object: T = Default::default();
+            object.metadata().replace(&ObjectMeta {
                 namespace: namespace.map(|s| s.to_string()),
                 name: Some(name.as_ref().to_string()),
                 ..Default::default()

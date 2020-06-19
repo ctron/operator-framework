@@ -1,6 +1,6 @@
 [package]
 name = "operator-framework"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Jens Reimann <ctron@dentrassi.de>"]
 edition = "2018"
 keywords = ["kubernetes", "operator"]
@@ -30,9 +30,6 @@ k8s-openapi = { version = "0.8", features = [ "v1_17" ] }
 [features]
 
 default = []
-
-# enable features which depend of patched dependencies
-patched = []
 
 # choose k8s API version, align with k8s-openapi features
 v1_11 = [ "k8s-openapi/v1_11" ]
