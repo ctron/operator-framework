@@ -65,7 +65,6 @@ where
 }
 
 /// Create or update a Kubernetes resource.
-#[cfg(feature = "patched")]
 pub async fn create_or_update<T, S1, S2, F>(
     api: &Api<T>,
     namespace: Option<S1>,
@@ -84,7 +83,7 @@ where
         name,
         |meta| {
             let mut object: T = Default::default();
-            object.set_metadata(meta);
+            *object.metadata_mut() = meta;
             object
         },
         mutator,
