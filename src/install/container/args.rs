@@ -1,6 +1,4 @@
-use k8s_openapi::api::core::v1::Container;
-
-/**
+/*
  * Copyright (c) 2020 Jens Reimann and others.
  *
  * See the NOTICE file(s) distributed with this work for additional
@@ -12,6 +10,9 @@ use k8s_openapi::api::core::v1::Container;
  *
  * SPDX-License-Identifier: EPL-2.0
  */
+
+use k8s_openapi::api::core::v1::Container;
+
 pub trait SetArgs<S: ToString> {
     fn args(&mut self, args: Vec<S>);
 }

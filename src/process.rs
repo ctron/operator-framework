@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (c) 2020 Jens Reimann and others.
  *
  * See the NOTICE file(s) distributed with this work for additional

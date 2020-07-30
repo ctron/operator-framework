@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (c) 2020 Jens Reimann and others.
  *
  * See the NOTICE file(s) distributed with this work for additional
@@ -12,3 +12,4 @@
  */
 pub mod config;
 pub mod container;
+pub mod meta;
