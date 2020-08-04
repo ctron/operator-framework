@@ -13,3 +13,6 @@
 pub mod config;
 pub mod container;
 pub mod meta;
+mod resources;
+
+pub use self::resources::*;

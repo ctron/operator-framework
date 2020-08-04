@@ -13,12 +13,13 @@
 mod args;
 mod env;
 mod port;
-mod resources;
+mod volumes;
 
 pub use self::args::*;
 pub use self::env::*;
 pub use self::port::*;
-pub use self::resources::*;
+pub use self::volumes::*;
+pub use crate::install::resources::*;
 
 use crate::utils::UseOrCreate;
 
