@@ -14,7 +14,7 @@ use crate::utils::UseOrCreate;
 
 use anyhow::Result;
 
-use k8s_openapi::api::core::v1::{Container, Pod, PodSpec, Volume, VolumeMount};
+use k8s_openapi::api::core::v1::{Container, PodSpec, Volume, VolumeMount};
 
 pub trait ApplyVolume {
     fn apply_volume<F, S>(&mut self, name: S, mutator: F) -> Result<()>
