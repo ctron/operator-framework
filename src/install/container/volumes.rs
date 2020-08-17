@@ -61,6 +61,26 @@ pub trait ApplyVolumeMount {
     where
         F: FnOnce(&mut VolumeMount) -> Result<()>,
         S: AsRef<str>;
+
+    fn apply_volume_mount_simple<S1, S2>(
+        &mut self,
+        name: S1,
+        path: S2,
+        read_only: bool,
+    ) -> Result<()>
+    where
+        S1: AsRef<str>,
+        S2: ToString,
+    {
+        self.apply_volume_mount(name, |mount| {
+            mount.mount_path = path.to_string();
+            mount.read_only = Some(read_only);
+            mount.mount_propagation = None;
+            mount.sub_path = None;
+            mount.sub_path_expr = None;
+            Ok(())
+        })
+    }
 }
 
 impl ApplyVolumeMount for Vec<VolumeMount> {
