@@ -16,54 +16,106 @@ use k8s_openapi::ByteString;
 use crate::utils::UseOrCreate;
 
 pub trait AppendString<T> {
-    fn append_string<S>(&mut self, key: S, value: T)
+    fn insert_string<S>(&mut self, key: S, keep_existing: bool, value: T)
     where
         S: ToString;
-}
 
-impl<T: Into<Vec<u8>>> AppendString<T> for Secret {
     fn append_string<S>(&mut self, key: S, value: T)
     where
         S: ToString,
     {
-        self.data
-            .use_or_create(|data| data.insert(key.to_string(), ByteString(value.into())));
+        self.insert_string(key, false, value);
+    }
+
+    fn init_string<S>(&mut self, key: S, value: T)
+    where
+        S: ToString,
+    {
+        self.insert_string(key, true, value);
+    }
+}
+
+impl<T: Into<Vec<u8>>> AppendString<T> for Secret {
+    fn insert_string<S>(&mut self, key: S, keep_existing: bool, value: T)
+    where
+        S: ToString,
+    {
+        self.data.use_or_create(|data| {
+            if keep_existing {
+                let entry = data.entry(key.to_string());
+                entry.or_insert(ByteString(value.into()));
+            } else {
+                data.insert(key.to_string(), ByteString(value.into()));
+            }
+        });
     }
 }
 
 impl<T: Into<String>> AppendString<T> for ConfigMap {
-    fn append_string<S>(&mut self, key: S, value: T)
+    fn insert_string<S>(&mut self, key: S, keep_existing: bool, value: T)
     where
         S: ToString,
     {
-        self.data
-            .use_or_create(|data| data.insert(key.to_string(), value.into()));
+        self.data.use_or_create(|data| {
+            if keep_existing {
+                let entry = data.entry(key.to_string());
+                entry.or_insert(value.into());
+            } else {
+                data.insert(key.to_string(), value.into());
+            }
+        });
     }
 }
 
 pub trait AppendBinary<T> {
-    fn append_binary<S>(&mut self, key: S, value: T)
+    fn insert_binary<S>(&mut self, key: S, keep_existing: bool, value: T)
     where
         S: ToString;
-}
 
-impl<T: Into<Vec<u8>>> AppendBinary<T> for Secret {
     fn append_binary<S>(&mut self, key: S, value: T)
     where
         S: ToString,
     {
-        self.data
-            .use_or_create(|data| data.insert(key.to_string(), ByteString(value.into())));
+        self.insert_binary(key, false, value);
+    }
+
+    fn init_binary<S>(&mut self, key: S, value: T)
+    where
+        S: ToString,
+    {
+        self.insert_binary(key, true, value);
+    }
+}
+
+impl<T: Into<Vec<u8>>> AppendBinary<T> for Secret {
+    fn insert_binary<S>(&mut self, key: S, keep_existing: bool, value: T)
+    where
+        S: ToString,
+    {
+        self.data.use_or_create(|data| {
+            if keep_existing {
+                let entry = data.entry(key.to_string());
+                entry.or_insert(ByteString(value.into()));
+            } else {
+                data.insert(key.to_string(), ByteString(value.into()));
+            }
+        });
     }
 }
 
 impl<T: Into<Vec<u8>>> AppendBinary<T> for ConfigMap {
-    fn append_binary<S>(&mut self, key: S, value: T)
+    fn insert_binary<S>(&mut self, key: S, keep_existing: bool, value: T)
     where
         S: ToString,
     {
-        self.binary_data
-            .use_or_create(|data| data.insert(key.to_string(), ByteString(value.into())));
+        self.binary_data.use_or_create(|data| {
+            if keep_existing {
+                let entry = data.entry(key.to_string());
+                entry.or_insert(ByteString(value.into()));
+            } else {
+                data.insert(key.to_string(), ByteString(value.into()));
+            }
+        });
     }
 }
 
@@ -71,11 +123,34 @@ impl<T: Into<Vec<u8>>> AppendBinary<T> for ConfigMap {
 mod tests {
 
     use super::*;
+    use std::collections::BTreeMap;
 
     #[test]
-    fn test_cm_string() {
+    fn test_cm_string_append() {
         let mut cm: ConfigMap = Default::default();
         cm.append_string("foo", "bar");
+
+        let mut expected = BTreeMap::new();
+        expected.insert("foo".into(), "bar".into());
+        assert_eq!(cm.data, Some(expected));
+
+        cm.append_string("foo", "bar2");
+        let mut expected = BTreeMap::new();
+        expected.insert("foo".into(), "bar2".into());
+        assert_eq!(cm.data, Some(expected));
+    }
+
+    #[test]
+    fn test_cm_string_init() {
+        let mut cm: ConfigMap = Default::default();
+        cm.append_string("foo", "bar");
+
+        let mut expected = BTreeMap::new();
+        expected.insert("foo".into(), "bar".into());
+        assert_eq!(cm.data, Some(expected.clone()));
+
+        cm.init_string("foo", "bar2");
+        assert_eq!(cm.data, Some(expected));
     }
 
     #[test]
