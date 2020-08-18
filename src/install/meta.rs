@@ -176,7 +176,7 @@ mod tests {
         let mut config_map_1: ConfigMap = new_cm(Some("ns1"), "cm1", "123");
         let config_map_2: ConfigMap = new_cm(Some("ns1"), "cm2", "456");
 
-        let r = config_map_1.owned_by(config_map_2, false, None);
+        let r = config_map_1.owned_by(&config_map_2, false, None);
         assert!(r.is_ok(), "Should be ok");
         assert_eq!(1, config_map_1.metadata.owner_references.expect("").len())
     }
@@ -187,9 +187,9 @@ mod tests {
         let config_map_2: ConfigMap = new_cm(Some("ns1"), "cm2", "456");
         let config_map_3: ConfigMap = new_cm(Some("ns1"), "cm3", "789");
 
-        let r = config_map_1.owned_by(config_map_2, false, None);
+        let r = config_map_1.owned_by(&config_map_2, false, None);
         assert!(r.is_ok(), "Should be ok");
-        let r = config_map_1.owned_by(config_map_3, false, None);
+        let r = config_map_1.owned_by(&config_map_3, false, None);
         assert!(r.is_ok(), "Should be ok");
         assert_eq!(2, config_map_1.metadata.owner_references.expect("").len())
     }
@@ -200,13 +200,13 @@ mod tests {
         let config_map_2: ConfigMap = new_cm(Some("ns1"), "cm2", "456");
         let config_map_3: ConfigMap = new_cm(Some("ns1"), "cm3", "789");
 
-        let r = config_map_1.owned_by(config_map_2, false, None);
+        let r = config_map_1.owned_by(&config_map_2, false, None);
         assert!(r.is_ok(), "Should be ok");
-        let r = config_map_1.owned_by(config_map_3, false, None);
+        let r = config_map_1.owned_by(&config_map_3, false, None);
         assert!(r.is_ok(), "Should be ok");
 
         let config_map_4: ConfigMap = new_cm(Some("ns1"), "cm3", "AAA");
-        let r = config_map_1.owned_by(config_map_4, false, None);
+        let r = config_map_1.owned_by(&config_map_4, false, None);
         assert!(r.is_ok(), "Should be ok");
         assert_eq!(2, config_map_1.metadata.owner_references.expect("").len())
     }
@@ -216,7 +216,7 @@ mod tests {
         let mut config_map_1: ConfigMap = new_cm(Some("ns1"), "cm1", "123");
         let config_map_2: ConfigMap = new_cm(Some("ns1"), "cm2", "456");
 
-        let r = config_map_1.owned_by_controller(config_map_2);
+        let r = config_map_1.owned_by_controller(&config_map_2);
         assert!(r.is_ok(), "Should be ok");
         assert_eq!(1, config_map_1.metadata.owner_references.expect("").len())
     }
@@ -227,9 +227,9 @@ mod tests {
         let config_map_2: ConfigMap = new_cm(Some("ns1"), "cm2", "456");
         let config_map_3: ConfigMap = new_cm(Some("ns1"), "cm3", "789");
 
-        let r = config_map_1.owned_by_controller(config_map_2);
+        let r = config_map_1.owned_by_controller(&config_map_2);
         assert!(r.is_ok(), "Should be ok");
-        let r = config_map_1.owned_by_controller(config_map_3);
+        let r = config_map_1.owned_by_controller(&config_map_3);
         assert!(r.is_err(), "Must not be ok");
         assert_eq!(1, config_map_1.metadata.owner_references.expect("").len())
     }
