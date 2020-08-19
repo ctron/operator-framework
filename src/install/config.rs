@@ -16,104 +16,126 @@ use k8s_openapi::ByteString;
 use crate::utils::UseOrCreate;
 
 pub trait AppendString<T> {
-    fn insert_string<S>(&mut self, key: S, keep_existing: bool, value: T)
+    fn insert_string<S, P>(&mut self, key: S, keep_existing: bool, provider: P)
     where
-        S: ToString;
+        S: ToString,
+        P: FnOnce() -> T;
 
     fn append_string<S>(&mut self, key: S, value: T)
     where
         S: ToString,
     {
-        self.insert_string(key, false, value);
+        self.insert_string(key, false, || value);
+    }
+
+    fn init_string_from<S, P>(&mut self, key: S, provider: P)
+    where
+        S: ToString,
+        P: FnOnce() -> T,
+    {
+        self.insert_string(key, true, provider);
     }
 
     fn init_string<S>(&mut self, key: S, value: T)
     where
         S: ToString,
     {
-        self.insert_string(key, true, value);
+        self.insert_string(key, true, || value);
     }
 }
 
 impl<T: Into<Vec<u8>>> AppendString<T> for Secret {
-    fn insert_string<S>(&mut self, key: S, keep_existing: bool, value: T)
+    fn insert_string<S, P>(&mut self, key: S, keep_existing: bool, provider: P)
     where
         S: ToString,
+        P: FnOnce() -> T,
     {
         self.data.use_or_create(|data| {
             if keep_existing {
                 let entry = data.entry(key.to_string());
-                entry.or_insert(ByteString(value.into()));
+                entry.or_insert(ByteString(provider().into()));
             } else {
-                data.insert(key.to_string(), ByteString(value.into()));
+                data.insert(key.to_string(), ByteString(provider().into()));
             }
         });
     }
 }
 
 impl<T: Into<String>> AppendString<T> for ConfigMap {
-    fn insert_string<S>(&mut self, key: S, keep_existing: bool, value: T)
+    fn insert_string<S, P>(&mut self, key: S, keep_existing: bool, provider: P)
     where
         S: ToString,
+        P: FnOnce() -> T,
     {
         self.data.use_or_create(|data| {
             if keep_existing {
                 let entry = data.entry(key.to_string());
-                entry.or_insert(value.into());
+                entry.or_insert(provider().into());
             } else {
-                data.insert(key.to_string(), value.into());
+                data.insert(key.to_string(), provider().into());
             }
         });
     }
 }
 
 pub trait AppendBinary<T> {
-    fn insert_binary<S>(&mut self, key: S, keep_existing: bool, value: T)
+    fn insert_binary<S, P>(&mut self, key: S, keep_existing: bool, provider: P)
     where
-        S: ToString;
+        S: ToString,
+        P: FnOnce() -> T;
 
     fn append_binary<S>(&mut self, key: S, value: T)
     where
         S: ToString,
     {
-        self.insert_binary(key, false, value);
+        self.insert_binary(key, false, || value);
+    }
+
+    fn init_binary_from<S, P>(&mut self, key: S, provider: P)
+    where
+        S: ToString,
+        P: FnOnce() -> T,
+    {
+        self.insert_binary(key, true, provider);
     }
 
     fn init_binary<S>(&mut self, key: S, value: T)
     where
         S: ToString,
     {
-        self.insert_binary(key, true, value);
+        self.insert_binary(key, true, || value);
     }
 }
 
 impl<T: Into<Vec<u8>>> AppendBinary<T> for Secret {
-    fn insert_binary<S>(&mut self, key: S, keep_existing: bool, value: T)
+    fn insert_binary<S, P>(&mut self, key: S, keep_existing: bool, provider: P)
     where
         S: ToString,
+        P: FnOnce() -> T,
     {
         self.data.use_or_create(|data| {
             if keep_existing {
                 let entry = data.entry(key.to_string());
-                entry.or_insert(ByteString(value.into()));
+                entry.or_insert(ByteString(provider().into()));
             } else {
-                data.insert(key.to_string(), ByteString(value.into()));
+                data.insert(key.to_string(), ByteString(provider().into()));
             }
         });
     }
 }
 
 impl<T: Into<Vec<u8>>> AppendBinary<T> for ConfigMap {
-    fn insert_binary<S>(&mut self, key: S, keep_existing: bool, value: T)
+    fn insert_binary<S, P>(&mut self, key: S, keep_existing: bool, provider: P)
     where
         S: ToString,
+        P: FnOnce() -> T,
     {
         self.binary_data.use_or_create(|data| {
             if keep_existing {
                 let entry = data.entry(key.to_string());
-                entry.or_insert(ByteString(value.into()));
+                entry.or_insert(ByteString(provider().into()));
             } else {
-                data.insert(key.to_string(), ByteString(value.into()));
+                data.insert(key.to_string(), ByteString(provider().into()));
             }
         });
     }
