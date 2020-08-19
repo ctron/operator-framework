@@ -6,6 +6,7 @@ edition = "2018"
 keywords = ["kubernetes", "operator"]
 license = "EPL-2.0"
 description = "Tools and helpers used to create Kubernetes operators"
+repository = "https://github.com/ctron/operator-framework"
 
 [dependencies]
 
