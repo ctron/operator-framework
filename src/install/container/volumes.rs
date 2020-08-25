@@ -23,6 +23,12 @@ pub trait ApplyVolume {
         S: AsRef<str>;
 }
 
+pub trait DropVolume {
+    fn drop_volume<S>(&mut self, name: S) -> bool
+    where
+        S: AsRef<str>;
+}
+
 impl ApplyVolume for Vec<Volume> {
     fn apply_volume<F, S>(&mut self, name: S, mutator: F) -> Result<()>
     where
@@ -45,6 +51,18 @@ impl ApplyVolume for Vec<Volume> {
     }
 }
 
+impl DropVolume for Vec<Volume> {
+    fn drop_volume<S>(&mut self, name: S) -> bool
+    where
+        S: AsRef<str>,
+    {
+        let start = self.len();
+        self.retain(|v| v.name != name.as_ref());
+
+        start != self.len()
+    }
+}
+
 impl ApplyVolume for PodSpec {
     fn apply_volume<F, S>(&mut self, name: S, mutator: F) -> Result<()>
     where
@@ -53,6 +71,19 @@ impl ApplyVolume for PodSpec {
     {
         self.volumes
             .use_or_create(|volumes| volumes.apply_volume(name, mutator))
+    }
+}
+
+impl DropVolume for PodSpec {
+    fn drop_volume<S>(&mut self, name: S) -> bool
+    where
+        S: AsRef<str>,
+    {
+        if let Some(v) = &mut self.volumes {
+            v.drop_volume(name)
+        } else {
+            false
+        }
     }
 }
 
@@ -83,6 +114,12 @@ pub trait ApplyVolumeMount {
     }
 }
 
+pub trait DropVolumeMount {
+    fn drop_volume_mount<S>(&mut self, name: S) -> bool
+    where
+        S: AsRef<str>;
+}
+
 impl ApplyVolumeMount for Vec<VolumeMount> {
     fn apply_volume_mount<F, S>(&mut self, name: S, mutator: F) -> Result<()>
     where
@@ -105,6 +142,18 @@ impl ApplyVolumeMount for Vec<VolumeMount> {
     }
 }
 
+impl DropVolumeMount for Vec<VolumeMount> {
+    fn drop_volume_mount<S>(&mut self, name: S) -> bool
+    where
+        S: AsRef<str>,
+    {
+        let start = self.len();
+        self.retain(|v| v.name != name.as_ref());
+
+        start != self.len()
+    }
+}
+
 impl ApplyVolumeMount for Container {
     fn apply_volume_mount<F, S>(&mut self, name: S, mutator: F) -> Result<()>
     where
@@ -113,5 +162,18 @@ impl ApplyVolumeMount for Container {
     {
         self.volume_mounts
             .use_or_create(|volume_mounts| volume_mounts.apply_volume_mount(name, mutator))
+    }
+}
+
+impl DropVolumeMount for Container {
+    fn drop_volume_mount<S>(&mut self, name: S) -> bool
+    where
+        S: AsRef<str>,
+    {
+        if let Some(v) = &mut self.volume_mounts {
+            v.drop_volume_mount(name)
+        } else {
+            false
+        }
     }
 }
