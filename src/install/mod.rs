@@ -12,7 +12,9 @@
  */
 pub mod config;
 pub mod container;
+mod delete;
 pub mod meta;
 mod resources;
 
+pub use self::delete::*;
 pub use self::resources::*;
