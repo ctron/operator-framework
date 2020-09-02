@@ -12,5 +12,6 @@
  */
 pub mod install;
 pub mod process;
+pub mod selectors;
 pub mod tracker;
 pub mod utils;
