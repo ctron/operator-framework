@@ -1,6 +1,6 @@
 [package]
 name = "operator-framework"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Jens Reimann <ctron@dentrassi.de>"]
 edition = "2018"
 keywords = ["kubernetes", "operator"]
@@ -13,8 +13,8 @@ repository = "https://github.com/ctron/operator-framework"
 anyhow = "1.0"
 log = "0.4"
 
-kube = "0.40"
-kube-derive = "0.40"
+kube = "0.42"
+kube-derive = "0.42"
 
 serde = "1.0"
 serde_derive = "1.0"
