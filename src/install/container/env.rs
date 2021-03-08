@@ -19,11 +19,19 @@ use k8s_openapi::api::core::v1::{
 };
 
 pub trait ApplyEnvironmentVariable {
+    /// Apply the mutator function to the environment variable with the provided name.
+    ///
+    /// If there currently exists no environment variable with this name, a new entry is created.
+    ///
+    /// The function may only throw an error if the mutator threw an error.
     fn apply_env<F, S>(&mut self, name: S, mutator: F) -> Result<()>
     where
         F: FnOnce(&mut EnvVar) -> Result<()>,
         S: AsRef<str>;
 
+    /// Drop an environment variable with the provided name.
+    ///
+    /// If no entry with that name exists, this is a no-op.
     fn drop_env<S>(&mut self, name: S)
     where
         S: AsRef<str>;
@@ -289,7 +297,7 @@ impl ApplyEnvironmentVariable for Container {
     where
         S: AsRef<str>,
     {
-        if let Some(ref mut envs) = self.env {
+        if let Some(envs) = &mut self.env {
             envs.drop_env(name);
         }
     }

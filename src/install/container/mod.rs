@@ -33,6 +33,18 @@ pub trait ApplyContainer {
         F: FnOnce(&mut Container) -> Result<()>;
 }
 
+pub trait RemoveContainer {
+    /// removes all containers matching the predicate
+    fn remove_containers<F>(&mut self, predicate: F) -> usize
+    where
+        F: Fn(&Container) -> bool;
+
+    /// remove a container by name
+    fn remove_container_by_name<S: AsRef<str>>(&mut self, name: S) -> bool {
+        self.remove_containers(|c| c.name == name.as_ref()) > 0
+    }
+}
+
 impl ApplyContainer for Vec<Container> {
     fn apply_container<F>(&mut self, name: &str, mutator: F) -> Result<()>
     where
@@ -81,5 +93,62 @@ impl ApplyContainer for Deployment {
     {
         self.spec
             .use_or_create(|spec| spec.template.apply_container(name, mutator))
+    }
+}
+
+impl RemoveContainer for Vec<Container> {
+    fn remove_containers<F>(&mut self, predicate: F) -> usize
+    where
+        F: Fn(&Container) -> bool,
+    {
+        let mut n: usize = 0;
+        self.retain(|c| {
+            if predicate(c) {
+                n += 1;
+                false
+            } else {
+                true
+            }
+        });
+        n
+    }
+}
+
+impl RemoveContainer for Option<&mut Vec<Container>> {
+    fn remove_containers<F>(&mut self, predicate: F) -> usize
+    where
+        F: Fn(&Container) -> bool,
+    {
+        if let Some(containers) = self {
+            containers.remove_containers(predicate)
+        } else {
+            0
+        }
+    }
+}
+
+impl RemoveContainer for PodTemplateSpec {
+    fn remove_containers<F>(&mut self, predicate: F) -> usize
+    where
+        F: Fn(&Container) -> bool,
+    {
+        self.spec
+            .as_mut()
+            .map(|s| &mut s.containers)
+            .remove_containers(predicate)
+    }
+}
+
+impl RemoveContainer for Deployment {
+    fn remove_containers<F>(&mut self, predicate: F) -> usize
+    where
+        F: Fn(&Container) -> bool,
+    {
+        self.spec
+            .as_mut()
+            .map(|s| &mut s.template)
+            .and_then(|s| s.spec.as_mut())
+            .map(|s| &mut s.containers)
+            .remove_containers(predicate)
     }
 }

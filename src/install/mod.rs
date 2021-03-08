@@ -15,6 +15,8 @@ pub mod container;
 mod delete;
 pub mod meta;
 mod resources;
+mod value;
 
 pub use self::delete::*;
 pub use self::resources::*;
+pub use self::value::*;
