@@ -28,11 +28,11 @@ impl<S: ToString> SetArgs<S> for Container {
 }
 
 pub trait SetCommand<S: ToString> {
-    fn args(&mut self, args: Vec<S>);
+    fn command(&mut self, args: Vec<S>);
 }
 
 impl<S: ToString> SetCommand<S> for Container {
-    fn args(&mut self, args: Vec<S>) {
+    fn command(&mut self, args: Vec<S>) {
         if args.is_empty() {
             self.command = None
         } else {
