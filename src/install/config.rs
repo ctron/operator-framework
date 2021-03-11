@@ -44,7 +44,7 @@ pub trait AppendString<T> {
     }
 }
 
-impl<T: Into<Vec<u8>>> AppendString<T> for Secret {
+impl<T: Into<String>> AppendString<T> for Secret {
     fn insert_string<S, P>(&mut self, key: S, keep_existing: bool, provider: P)
     where
         S: ToString,
@@ -53,9 +53,9 @@ impl<T: Into<Vec<u8>>> AppendString<T> for Secret {
         self.data.use_or_create(|data| {
             if keep_existing {
                 let entry = data.entry(key.to_string());
-                entry.or_insert(ByteString(provider().into()));
+                entry.or_insert(ByteString(provider().into().into_bytes()));
             } else {
-                data.insert(key.to_string(), ByteString(provider().into()));
+                data.insert(key.to_string(), ByteString(provider().into().into_bytes()));
             }
         });
     }
