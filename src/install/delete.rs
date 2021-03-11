@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Jens Reimann and others.
+ * Copyright (c) 2020, 2021 Jens Reimann and others.
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -12,25 +12,33 @@
  */
 
 use async_trait::async_trait;
-
 use either::Either::{Left, Right};
-use kube::api::{DeleteParams, Meta};
-use kube::{Api, Error};
+use futures::future::FutureExt;
+use kube::api::Preconditions;
+use kube::{
+    api::{DeleteParams, Meta},
+    Api, Error,
+};
 use serde::de::DeserializeOwned;
 
-use futures::future::FutureExt;
-
 #[async_trait]
-pub trait DeleteOptionally {
+pub trait Delete<R: Send> {
     /// Optionally delete a resource. If the resource was already gone, this is not treated as an error.
     ///
     /// The function will return `true` if the resource was deleted (or already gone) and `false` if
     /// the resource is being delete. All other errors are returned unmodified.
     async fn delete_optionally(&self, name: &str, dp: &DeleteParams) -> Result<bool, kube::Error>;
+
+    async fn delete_conditionally<F>(&self, name: &str, f: F) -> Result<bool, kube::Error>
+    where
+        F: FnOnce(&R) -> bool + Send;
 }
 
 #[async_trait]
-impl<K: Clone + DeserializeOwned + Meta> DeleteOptionally for Api<K> {
+impl<K> Delete<K> for Api<K>
+where
+    K: Clone + DeserializeOwned + Meta + Send,
+{
     async fn delete_optionally(&self, name: &str, dp: &DeleteParams) -> Result<bool, kube::Error> {
         self.delete(name, dp)
             .map(|future| {
@@ -45,5 +53,28 @@ impl<K: Clone + DeserializeOwned + Meta> DeleteOptionally for Api<K> {
                     })
             })
             .await
+    }
+
+    async fn delete_conditionally<F>(&self, name: &str, f: F) -> Result<bool, kube::Error>
+    where
+        F: FnOnce(&K) -> bool + Send,
+    {
+        let resource = self.get(name).await?;
+
+        if f(&resource) {
+            let dp = DeleteParams {
+                preconditions: Some(Preconditions {
+                    resource_version: resource.meta().resource_version.as_ref().cloned(),
+                    uid: resource.meta().uid.as_ref().cloned(),
+                }),
+                ..Default::default()
+            };
+
+            self.delete(name, &dp).await?;
+
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 }
