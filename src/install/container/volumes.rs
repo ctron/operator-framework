@@ -14,7 +14,7 @@ use crate::utils::UseOrCreate;
 
 use anyhow::Result;
 
-use k8s_openapi::api::core::v1::{Container, PodSpec, Volume, VolumeMount};
+use k8s_openapi::api::core::v1::{Container, PodSpec, PodTemplateSpec, Volume, VolumeMount};
 
 pub trait ApplyVolume {
     fn apply_volume<F, S>(&mut self, name: S, mutator: F) -> Result<()>
@@ -74,6 +74,17 @@ impl ApplyVolume for PodSpec {
     }
 }
 
+impl ApplyVolume for PodTemplateSpec {
+    fn apply_volume<F, S>(&mut self, name: S, mutator: F) -> Result<()>
+    where
+        F: FnOnce(&mut Volume) -> Result<()>,
+        S: AsRef<str>,
+    {
+        self.spec
+            .use_or_create(|spec| spec.apply_volume(name, mutator))
+    }
+}
+
 impl DropVolume for PodSpec {
     fn drop_volume<S>(&mut self, name: S) -> bool
     where
@@ -81,6 +92,19 @@ impl DropVolume for PodSpec {
     {
         if let Some(v) = &mut self.volumes {
             v.drop_volume(name)
+        } else {
+            false
+        }
+    }
+}
+
+impl DropVolume for PodTemplateSpec {
+    fn drop_volume<S>(&mut self, name: S) -> bool
+    where
+        S: AsRef<str>,
+    {
+        if let Some(spec) = &mut self.spec {
+            spec.drop_volume(name)
         } else {
             false
         }

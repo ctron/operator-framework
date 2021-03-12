@@ -152,3 +152,22 @@ impl RemoveContainer for Deployment {
             .remove_containers(predicate)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use k8s_openapi::api::apps::v1::Deployment;
+
+    /// test apply on different targets
+    #[test]
+    fn test_apply() {
+        let mut d = Deployment::default();
+        d.apply_container("foo", |_| Ok(())).unwrap();
+
+        fn test(dm: &mut Deployment) {
+            dm.apply_container("foo", |_| Ok(())).unwrap();
+        }
+
+        test(&mut d);
+    }
+}
