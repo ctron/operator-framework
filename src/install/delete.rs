@@ -60,7 +60,10 @@ where
     where
         F: FnOnce(&K) -> anyhow::Result<bool> + Send,
     {
-        let resource = self.get(name).await?;
+        let resource = match self.get(name).await {
+            Err(Error::Api(cause)) if cause.reason == "NotFound" => return Ok(false),
+            result => result?,
+        };
 
         if f(&resource)? {
             let dp = DeleteParams {
@@ -71,7 +74,7 @@ where
                 ..Default::default()
             };
 
-            self.delete(name, &dp).await?;
+            self.delete_optionally(name, &dp).await?;
 
             Ok(true)
         } else {
