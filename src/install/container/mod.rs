@@ -25,7 +25,7 @@ use crate::utils::UseOrCreate;
 
 use anyhow::Result;
 use k8s_openapi::api::apps::v1::Deployment;
-use k8s_openapi::api::core::v1::{Container, PodTemplateSpec};
+use k8s_openapi::api::core::v1::{Container, PodSpec, PodTemplateSpec};
 
 pub trait ApplyContainer {
     fn apply_container<F>(&mut self, name: &str, mutator: F) -> Result<()>
@@ -114,7 +114,7 @@ impl RemoveContainer for Vec<Container> {
     }
 }
 
-impl RemoveContainer for Option<&mut Vec<Container>> {
+impl RemoveContainer for Option<Vec<Container>> {
     fn remove_containers<F>(&mut self, predicate: F) -> usize
     where
         F: Fn(&Container) -> bool,
@@ -132,10 +132,20 @@ impl RemoveContainer for PodTemplateSpec {
     where
         F: Fn(&Container) -> bool,
     {
-        self.spec
-            .as_mut()
-            .map(|s| &mut s.containers)
-            .remove_containers(predicate)
+        if let Some(spec) = &mut self.spec {
+            spec.remove_containers(predicate)
+        } else {
+            0
+        }
+    }
+}
+
+impl RemoveContainer for PodSpec {
+    fn remove_containers<F>(&mut self, predicate: F) -> usize
+    where
+        F: Fn(&Container) -> bool,
+    {
+        self.containers.remove_containers(predicate)
     }
 }
 
@@ -144,12 +154,11 @@ impl RemoveContainer for Deployment {
     where
         F: Fn(&Container) -> bool,
     {
-        self.spec
-            .as_mut()
-            .map(|s| &mut s.template)
-            .and_then(|s| s.spec.as_mut())
-            .map(|s| &mut s.containers)
-            .remove_containers(predicate)
+        if let Some(spec) = &mut self.spec {
+            spec.template.remove_containers(predicate)
+        } else {
+            0
+        }
     }
 }
 
