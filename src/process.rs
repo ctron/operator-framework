@@ -12,26 +12,30 @@
  */
 use anyhow::Result;
 
-use kube::api::{Meta, ObjectMeta, PostParams};
-use kube::{Api, Error};
-
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use kube::{
+    api::{ObjectMeta, PostParams},
+    Api, Error, Resource,
+};
+use serde::{de::DeserializeOwned, Serialize};
+use std::fmt::Debug;
 
 /// Create or update a Kubernetes resource.
-pub async fn create_or_update_by<T, S1, S2, C, F>(
+pub async fn create_or_update_by<T, S1, S2, C, F, E, Eq>(
     api: &Api<T>,
     namespace: Option<S1>,
     name: S2,
     creator: C,
+    eq: Eq,
     mutator: F,
-) -> Result<()>
+) -> Result<T, E>
 where
-    T: Clone + Serialize + DeserializeOwned + Meta<Ty = ObjectMeta> + Default + PartialEq,
+    T: Resource + Clone + Debug + DeserializeOwned + Serialize,
     S1: ToString,
     S2: AsRef<str>,
     C: FnOnce(ObjectMeta) -> T,
-    F: FnOnce(T) -> Result<T>,
+    F: FnOnce(T) -> Result<T, E>,
+    Eq: FnOnce(&T, &T) -> bool,
+    E: From<Error>,
 {
     match api.get(name.as_ref()).await {
         Err(Error::Api(ae)) if ae.code == 404 => {
@@ -43,39 +47,40 @@ where
             });
             let object = mutator(object)?;
             api.create(&PostParams::default(), &object).await?;
+            Ok(object)
         }
         Err(e) => {
             log::info!("Error - {}", e);
-            Err(e)?;
+            Err(e)?
         }
         Ok(object) => {
             log::debug!("CreateOrUpdate - Ok(...)");
             let new_object = mutator(object.clone())?;
 
             // only update when necessary
-            if !object.eq(&new_object) {
+            if !eq(&object, &new_object) {
                 log::debug!("CreateOrUpdate - Changed -> replacing");
                 api.replace(name.as_ref(), &PostParams::default(), &new_object)
                     .await?;
             }
+            Ok(new_object)
         }
-    };
-
-    Ok(())
+    }
 }
 
 /// Create or update a Kubernetes resource.
-pub async fn create_or_update<T, S1, S2, F>(
+pub async fn create_or_update<T, S1, S2, F, E>(
     api: &Api<T>,
     namespace: Option<S1>,
     name: S2,
     mutator: F,
-) -> Result<()>
+) -> Result<T, E>
 where
-    T: Clone + Serialize + DeserializeOwned + Meta<Ty = ObjectMeta> + Default + PartialEq,
+    T: Resource + Clone + Debug + DeserializeOwned + Serialize + PartialEq + Default,
     S1: ToString,
     S2: AsRef<str>,
-    F: FnOnce(T) -> Result<T>,
+    F: FnOnce(T) -> Result<T, E>,
+    E: From<Error>,
 {
     create_or_update_by(
         api,
@@ -83,9 +88,10 @@ where
         name,
         |meta| {
             let mut object: T = Default::default();
-            *object.metadata_mut() = meta;
+            *object.meta_mut() = meta;
             object
         },
+        |this, that| this == that,
         mutator,
     )
     .await

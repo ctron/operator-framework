@@ -14,12 +14,12 @@
 use async_trait::async_trait;
 use either::Either::{Left, Right};
 use futures::future::FutureExt;
-use kube::api::Preconditions;
 use kube::{
-    api::{DeleteParams, Meta},
-    Api, Error,
+    api::{DeleteParams, Preconditions},
+    Api, Error, Resource,
 };
 use serde::de::DeserializeOwned;
+use std::fmt::Debug;
 
 #[async_trait]
 pub trait Delete<R: Send> {
@@ -37,7 +37,7 @@ pub trait Delete<R: Send> {
 #[async_trait]
 impl<K> Delete<K> for Api<K>
 where
-    K: Clone + DeserializeOwned + Meta + Send,
+    K: Resource + Clone + DeserializeOwned + Send + Debug,
 {
     async fn delete_optionally(&self, name: &str, dp: &DeleteParams) -> anyhow::Result<bool> {
         Ok(self

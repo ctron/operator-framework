@@ -61,16 +61,12 @@ impl<K> Trackable for BTreeMap<K, ByteString> {
 
 impl Trackable for Secret {
     fn track_with(&self, tracker: &mut ConfigTracker) {
-        if let Some(ref data) = self.data {
-            data.track_with(tracker);
-        }
+        self.data.track_with(tracker);
     }
 }
 
 impl Trackable for ConfigMap {
     fn track_with(&self, tracker: &mut ConfigTracker) {
-        if let Some(ref data) = self.data {
-            data.track_with(tracker);
-        }
+        self.data.track_with(tracker);
     }
 }

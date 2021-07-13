@@ -69,8 +69,7 @@ impl ApplyVolume for PodSpec {
         F: FnOnce(&mut Volume) -> Result<()>,
         S: AsRef<str>,
     {
-        self.volumes
-            .use_or_create(|volumes| volumes.apply_volume(name, mutator))
+        self.volumes.apply_volume(name, mutator)
     }
 }
 
@@ -90,11 +89,7 @@ impl DropVolume for PodSpec {
     where
         S: AsRef<str>,
     {
-        if let Some(v) = &mut self.volumes {
-            v.drop_volume(name)
-        } else {
-            false
-        }
+        self.volumes.drop_volume(name)
     }
 }
 
@@ -184,8 +179,7 @@ impl ApplyVolumeMount for Container {
         F: FnOnce(&mut VolumeMount) -> Result<()>,
         S: AsRef<str>,
     {
-        self.volume_mounts
-            .use_or_create(|volume_mounts| volume_mounts.apply_volume_mount(name, mutator))
+        self.volume_mounts.apply_volume_mount(name, mutator)
     }
 }
 
@@ -194,10 +188,6 @@ impl DropVolumeMount for Container {
     where
         S: AsRef<str>,
     {
-        if let Some(v) = &mut self.volume_mounts {
-            v.drop_volume_mount(name)
-        } else {
-            false
-        }
+        self.volume_mounts.drop_volume_mount(name)
     }
 }

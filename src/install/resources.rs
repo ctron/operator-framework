@@ -38,20 +38,20 @@ impl SetResources for ResourceRequirements {
         S2: ToString,
         S3: ToString,
     {
-        self.requests.use_or_create(|requests| match request {
-            Some(ref request) => {
-                requests.insert(resource_type.to_string(), Quantity(request.to_string()))
-            }
+        match request {
+            Some(ref request) => self
+                .requests
+                .insert(resource_type.to_string(), Quantity(request.to_string())),
 
-            None => requests.remove(&resource_type.to_string()),
-        });
-        self.limits.use_or_create(|limits| match limit {
-            Some(ref limit) => {
-                limits.insert(resource_type.to_string(), Quantity(limit.to_string()))
-            }
+            None => self.requests.remove(&resource_type.to_string()),
+        };
+        match limit {
+            Some(ref limit) => self
+                .limits
+                .insert(resource_type.to_string(), Quantity(limit.to_string())),
 
-            None => limits.remove(&resource_type.to_string()),
-        });
+            None => self.limits.remove(&resource_type.to_string()),
+        };
     }
 }
 

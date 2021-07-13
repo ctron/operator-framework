@@ -15,8 +15,6 @@ use anyhow::anyhow;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
 use k8s_openapi::Metadata;
 
-use crate::utils::UseOrCreate;
-
 pub trait OwnedBy<R> {
     fn owned_by(
         &mut self,
@@ -139,35 +137,31 @@ where
 
         let owner = resource.as_owner(Some(controller), block_owner_deletion)?;
 
-        self.metadata_mut()
-            .owner_references
-            .use_or_create_err(|owners| {
-                let mut found = None;
+        let mut found = None;
 
-                for (idx, o) in owners.iter().enumerate() {
-                    if owner.is_same_owner(&o) {
-                        found = Some(idx);
-                    } else if controller {
-                        match o.controller {
-                            Some(true) => Err(anyhow!("Object already has a controller")),
-                            _ => Ok(()),
-                        }?;
-                    }
-                }
+        let owners = &mut self.metadata_mut().owner_references;
 
-                match found {
-                    Some(idx) => {
-                        let o = &mut owners[idx];
-                        o.controller = owner.controller;
-                        o.block_owner_deletion = owner.block_owner_deletion;
-                    }
-                    None => {
-                        owners.push(owner);
-                    }
-                }
+        for (idx, o) in owners.iter().enumerate() {
+            if owner.is_same_owner(&o) {
+                found = Some(idx);
+            } else if controller {
+                match o.controller {
+                    Some(true) => Err(anyhow!("Object already has a controller")),
+                    _ => Ok(()),
+                }?;
+            }
+        }
 
-                Ok(())
-            })?;
+        match found {
+            Some(idx) => {
+                let o = &mut owners[idx];
+                o.controller = owner.controller;
+                o.block_owner_deletion = owner.block_owner_deletion;
+            }
+            None => {
+                owners.push(owner);
+            }
+        }
 
         Ok(())
     }
@@ -175,12 +169,9 @@ where
     fn is_owned_by(&self, owner: &R, controlled: Option<bool>) -> Result<bool, anyhow::Error> {
         let owner = owner.as_owner(controlled, None)?;
 
-        if let Some(owner_references) = &self.metadata().owner_references {
-            println!("OwnerRef: {:?}", owner_references);
-            for r in owner_references {
-                if r.is_same_owner_opts(&owner, controlled.is_some()) {
-                    return Ok(true);
-                }
+        for r in &self.metadata().owner_references {
+            if r.is_same_owner_opts(&owner, controlled.is_some()) {
+                return Ok(true);
             }
         }
 
@@ -214,7 +205,7 @@ mod tests {
 
         let r = config_map_1.owned_by(&config_map_2, false, None);
         assert!(r.is_ok(), "Should be ok");
-        assert_eq!(1, config_map_1.metadata.owner_references.expect("").len())
+        assert_eq!(1, config_map_1.metadata.owner_references.len())
     }
 
     #[test]
@@ -227,7 +218,7 @@ mod tests {
         assert!(r.is_ok(), "Should be ok");
         let r = config_map_1.owned_by(&config_map_3, false, None);
         assert!(r.is_ok(), "Should be ok");
-        assert_eq!(2, config_map_1.metadata.owner_references.expect("").len())
+        assert_eq!(2, config_map_1.metadata.owner_references.len())
     }
 
     #[test]
@@ -244,7 +235,7 @@ mod tests {
         let config_map_4: ConfigMap = new_cm(Some("ns1"), "cm3", "AAA");
         let r = config_map_1.owned_by(&config_map_4, false, None);
         assert!(r.is_ok(), "Should be ok");
-        assert_eq!(2, config_map_1.metadata.owner_references.expect("").len())
+        assert_eq!(2, config_map_1.metadata.owner_references.len())
     }
 
     #[test]
@@ -254,7 +245,7 @@ mod tests {
 
         let r = config_map_1.owned_by_controller(&config_map_2);
         assert!(r.is_ok(), "Should be ok");
-        assert_eq!(1, config_map_1.metadata.owner_references.expect("").len())
+        assert_eq!(1, config_map_1.metadata.owner_references.len())
     }
 
     #[test]
@@ -270,7 +261,7 @@ mod tests {
         assert!(r.is_ok(), "Should be ok");
         let r = config_map_1.owned_by_controller(&config_map_4);
         assert!(r.is_err(), "Must not be ok");
-        assert_eq!(2, config_map_1.metadata.owner_references.expect("").len())
+        assert_eq!(2, config_map_1.metadata.owner_references.len())
     }
 
     #[test]

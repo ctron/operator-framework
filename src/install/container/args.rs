@@ -19,11 +19,7 @@ pub trait SetArgs<S: ToString> {
 
 impl<S: ToString> SetArgs<S> for Container {
     fn args(&mut self, args: Vec<S>) {
-        if args.is_empty() {
-            self.args = None;
-        } else {
-            self.args = Some(args.iter().map(|s| s.to_string()).collect());
-        }
+        self.args = args.iter().map(|s| s.to_string()).collect();
     }
 }
 
@@ -33,10 +29,6 @@ pub trait SetCommand<S: ToString> {
 
 impl<S: ToString> SetCommand<S> for Container {
     fn command(&mut self, args: Vec<S>) {
-        if args.is_empty() {
-            self.command = None
-        } else {
-            self.command = Some(args.iter().map(|s| s.to_string()).collect());
-        }
+        self.command = args.iter().map(|s| s.to_string()).collect();
     }
 }

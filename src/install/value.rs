@@ -5,13 +5,13 @@ use core::fmt::{self, Formatter};
 use k8s_openapi::api::core::v1::{
     ConfigMap, ConfigMapKeySelector, EnvVar, EnvVarSource, Secret, SecretKeySelector,
 };
-use kube::{api::Meta, Api};
-use serde::de::DeserializeOwned;
+use kube::{Api, Resource};
 use serde::{
-    de::{self, MapAccess, Visitor},
+    de::{self, DeserializeOwned, MapAccess, Visitor},
     ser::SerializeStruct,
     {Deserialize, Deserializer, Serialize, Serializer},
 };
+use std::fmt::Debug;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueOrReference {
@@ -58,7 +58,7 @@ impl<'a> KubeReader<'a> {
         extractor: F,
     ) -> Result<Option<String>>
     where
-        T: Meta + DeserializeOwned + Clone,
+        T: Resource + DeserializeOwned + Clone + Debug,
         F: FnOnce(T, &str) -> Option<String>,
     {
         if let Some(name) = name {
@@ -89,7 +89,7 @@ impl<'a> Reader for KubeReader<'a> {
             selector.name.as_ref().map(|s| s.as_str()),
             &selector.key,
             selector.optional,
-            |resource, key| resource.data.and_then(|data| data.get(key).cloned()),
+            |resource, key| resource.data.get(key).cloned(),
         )
         .await
     }
@@ -102,11 +102,11 @@ impl<'a> Reader for KubeReader<'a> {
             &selector.key,
             selector.optional,
             |resource, key| {
-                resource.data.and_then(|data| {
-                    data.get(key)
-                        .cloned()
-                        .and_then(|s| String::from_utf8(s.0).ok())
-                })
+                resource
+                    .data
+                    .get(key)
+                    .cloned()
+                    .and_then(|s| String::from_utf8(s.0).ok())
             },
         )
         .await
