@@ -19,6 +19,22 @@ use kube::{
 use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
 
+pub enum Outcome<T> {
+    Created(T),
+    Updated(T),
+    Unchanged(T),
+}
+
+impl<T> Outcome<T> {
+    pub fn resource(self) -> T {
+        match self {
+            Self::Created(r) => r,
+            Self::Updated(r) => r,
+            Self::Unchanged(r) => r,
+        }
+    }
+}
+
 /// Create or update a Kubernetes resource.
 pub async fn create_or_update_by<T, S1, S2, C, F, E, Eq>(
     api: &Api<T>,
@@ -27,7 +43,7 @@ pub async fn create_or_update_by<T, S1, S2, C, F, E, Eq>(
     creator: C,
     eq: Eq,
     mutator: F,
-) -> Result<T, E>
+) -> Result<Outcome<T>, E>
 where
     T: Resource + Clone + Debug + DeserializeOwned + Serialize,
     S1: ToString,
@@ -47,7 +63,7 @@ where
             });
             let object = mutator(object)?;
             api.create(&PostParams::default(), &object).await?;
-            Ok(object)
+            Ok(Outcome::Created(object))
         }
         Err(e) => {
             log::info!("Error - {}", e);
@@ -62,8 +78,10 @@ where
                 log::debug!("CreateOrUpdate - Changed -> replacing");
                 api.replace(name.as_ref(), &PostParams::default(), &new_object)
                     .await?;
+                Ok(Outcome::Updated(new_object))
+            } else {
+                Ok(Outcome::Unchanged(new_object))
             }
-            Ok(new_object)
         }
     }
 }
@@ -74,7 +92,7 @@ pub async fn create_or_update<T, S1, S2, F, E>(
     namespace: Option<S1>,
     name: S2,
     mutator: F,
-) -> Result<T, E>
+) -> Result<Outcome<T>, E>
 where
     T: Resource + Clone + Debug + DeserializeOwned + Serialize + PartialEq + Default,
     S1: ToString,
