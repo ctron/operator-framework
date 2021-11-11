@@ -11,6 +11,7 @@
  * SPDX-License-Identifier: EPL-2.0
  */
 
+use crate::utils::UseOrCreate;
 use anyhow::Result;
 use k8s_openapi::api::core::v1::{
     ConfigMapKeySelector, Container, EnvVar, EnvVarSource, ObjectFieldSelector,
@@ -289,13 +290,15 @@ impl ApplyEnvironmentVariable for Container {
         F: FnOnce(&mut EnvVar) -> Result<()>,
         S: AsRef<str>,
     {
-        self.env.apply_env(name, mutator)
+        self.env.use_or_create(|env| env.apply_env(name, mutator))
     }
 
     fn drop_env<S>(&mut self, name: S)
     where
         S: AsRef<str>,
     {
-        self.env.drop_env(name);
+        if let Some(env) = &mut self.env {
+            env.drop_env(name);
+        }
     }
 }

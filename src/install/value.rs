@@ -89,7 +89,7 @@ impl<'a> Reader for KubeReader<'a> {
             selector.name.as_ref().map(|s| s.as_str()),
             &selector.key,
             selector.optional,
-            |resource, key| resource.data.get(key).cloned(),
+            |resource, key| resource.data.and_then(|data| data.get(key).cloned()),
         )
         .await
     }
@@ -102,11 +102,11 @@ impl<'a> Reader for KubeReader<'a> {
             &selector.key,
             selector.optional,
             |resource, key| {
-                resource
-                    .data
-                    .get(key)
-                    .cloned()
-                    .and_then(|s| String::from_utf8(s.0).ok())
+                resource.data.and_then(|data| {
+                    data.get(key)
+                        .cloned()
+                        .and_then(|s| String::from_utf8(s.0).ok())
+                })
             },
         )
         .await

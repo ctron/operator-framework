@@ -13,22 +13,53 @@
 
 use k8s_openapi::api::core::v1::Container;
 
-pub trait SetArgs<S: ToString> {
-    fn args(&mut self, args: Vec<S>);
+pub trait SetArgs<T, I>
+where
+    T: Into<String>,
+    I: IntoIterator<Item = T>,
+{
+    fn args(&mut self, args: I);
 }
 
-impl<S: ToString> SetArgs<S> for Container {
-    fn args(&mut self, args: Vec<S>) {
-        self.args = args.iter().map(|s| s.to_string()).collect();
+impl<T, I> SetArgs<T, I> for Container
+where
+    T: Into<String>,
+    I: IntoIterator<Item = T>,
+{
+    fn args(&mut self, args: I) {
+        self.args = Some(args.into_iter().map(|s| s.into()).collect());
     }
 }
 
-pub trait SetCommand<S: ToString> {
-    fn command(&mut self, args: Vec<S>);
+pub trait SetCommand<T, I>
+where
+    T: Into<String>,
+    I: IntoIterator<Item = T>,
+{
+    fn command(&mut self, args: I);
 }
 
-impl<S: ToString> SetCommand<S> for Container {
-    fn command(&mut self, args: Vec<S>) {
-        self.command = args.iter().map(|s| s.to_string()).collect();
+impl<T, I> SetCommand<T, I> for Container
+where
+    T: Into<String>,
+    I: IntoIterator<Item = T>,
+{
+    fn command(&mut self, command: I) {
+        self.command = Some(command.into_iter().map(|s| s.into()).collect());
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test() {
+        let mut container = Container {
+            ..Default::default()
+        };
+        container.command(vec!["foo", "bar"]);
+        container.args(vec!["foo", "bar"]);
     }
 }

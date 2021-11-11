@@ -10,6 +10,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
+use crate::utils::UseOrCreate;
 use anyhow::Result;
 use k8s_openapi::api::core::v1::{Container, ContainerPort};
 
@@ -62,6 +63,7 @@ impl ApplyPort for Container {
         F: FnOnce(&mut ContainerPort) -> Result<()>,
         S: AsRef<str>,
     {
-        self.ports.apply_port(name, mutator)
+        self.ports
+            .use_or_create(|ports| ports.apply_port(name, mutator))
     }
 }

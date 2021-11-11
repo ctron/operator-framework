@@ -47,6 +47,27 @@ where
     }
 }
 
+/// Implementation for `Option`s which wrap `Default`s.
+impl<T> UseOrCreate<T> for &mut Option<T>
+where
+    T: Default,
+{
+    fn use_or_create<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce(&mut T) -> R,
+    {
+        match self {
+            Some(value) => f(value),
+            None => {
+                let mut value = Default::default();
+                let result = f(&mut value);
+                self.replace(value);
+                result
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
 

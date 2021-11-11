@@ -11,9 +11,12 @@
  * SPDX-License-Identifier: EPL-2.0
  */
 
+use crate::utils::UseOrCreate;
 use anyhow::anyhow;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
-use k8s_openapi::Metadata;
+use k8s_openapi::{
+    apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference},
+    Metadata,
+};
 
 pub trait OwnedBy<R> {
     fn owned_by(
@@ -139,29 +142,33 @@ where
 
         let mut found = None;
 
-        let owners = &mut self.metadata_mut().owner_references;
+        self.metadata_mut()
+            .owner_references
+            .use_or_create_err(|owners| {
+                for (idx, o) in owners.iter().enumerate() {
+                    if owner.is_same_owner(&o) {
+                        found = Some(idx);
+                    } else if controller {
+                        match o.controller {
+                            Some(true) => Err(anyhow!("Object already has a controller")),
+                            _ => Ok(()),
+                        }?;
+                    }
+                }
 
-        for (idx, o) in owners.iter().enumerate() {
-            if owner.is_same_owner(&o) {
-                found = Some(idx);
-            } else if controller {
-                match o.controller {
-                    Some(true) => Err(anyhow!("Object already has a controller")),
-                    _ => Ok(()),
-                }?;
-            }
-        }
+                match found {
+                    Some(idx) => {
+                        let o = &mut owners[idx];
+                        o.controller = owner.controller;
+                        o.block_owner_deletion = owner.block_owner_deletion;
+                    }
+                    None => {
+                        owners.push(owner);
+                    }
+                }
 
-        match found {
-            Some(idx) => {
-                let o = &mut owners[idx];
-                o.controller = owner.controller;
-                o.block_owner_deletion = owner.block_owner_deletion;
-            }
-            None => {
-                owners.push(owner);
-            }
-        }
+                Ok(())
+            })?;
 
         Ok(())
     }
@@ -169,9 +176,11 @@ where
     fn is_owned_by(&self, owner: &R, controlled: Option<bool>) -> Result<bool, anyhow::Error> {
         let owner = owner.as_owner(controlled, None)?;
 
-        for r in &self.metadata().owner_references {
-            if r.is_same_owner_opts(&owner, controlled.is_some()) {
-                return Ok(true);
+        if let Some(owner_refs) = &self.metadata().owner_references {
+            for r in owner_refs {
+                if r.is_same_owner_opts(&owner, controlled.is_some()) {
+                    return Ok(true);
+                }
             }
         }
 
@@ -205,7 +214,14 @@ mod tests {
 
         let r = config_map_1.owned_by(&config_map_2, false, None);
         assert!(r.is_ok(), "Should be ok");
-        assert_eq!(1, config_map_1.metadata.owner_references.len())
+        assert_eq!(
+            1,
+            config_map_1
+                .metadata
+                .owner_references
+                .unwrap_or_default()
+                .len()
+        )
     }
 
     #[test]
@@ -218,7 +234,14 @@ mod tests {
         assert!(r.is_ok(), "Should be ok");
         let r = config_map_1.owned_by(&config_map_3, false, None);
         assert!(r.is_ok(), "Should be ok");
-        assert_eq!(2, config_map_1.metadata.owner_references.len())
+        assert_eq!(
+            2,
+            config_map_1
+                .metadata
+                .owner_references
+                .unwrap_or_default()
+                .len()
+        )
     }
 
     #[test]
@@ -235,7 +258,14 @@ mod tests {
         let config_map_4: ConfigMap = new_cm(Some("ns1"), "cm3", "AAA");
         let r = config_map_1.owned_by(&config_map_4, false, None);
         assert!(r.is_ok(), "Should be ok");
-        assert_eq!(2, config_map_1.metadata.owner_references.len())
+        assert_eq!(
+            2,
+            config_map_1
+                .metadata
+                .owner_references
+                .unwrap_or_default()
+                .len()
+        )
     }
 
     #[test]
@@ -245,7 +275,14 @@ mod tests {
 
         let r = config_map_1.owned_by_controller(&config_map_2);
         assert!(r.is_ok(), "Should be ok");
-        assert_eq!(1, config_map_1.metadata.owner_references.len())
+        assert_eq!(
+            1,
+            config_map_1
+                .metadata
+                .owner_references
+                .unwrap_or_default()
+                .len()
+        )
     }
 
     #[test]
@@ -261,7 +298,14 @@ mod tests {
         assert!(r.is_ok(), "Should be ok");
         let r = config_map_1.owned_by_controller(&config_map_4);
         assert!(r.is_err(), "Must not be ok");
-        assert_eq!(2, config_map_1.metadata.owner_references.len())
+        assert_eq!(
+            2,
+            config_map_1
+                .metadata
+                .owner_references
+                .unwrap_or_default()
+                .len()
+        )
     }
 
     #[test]

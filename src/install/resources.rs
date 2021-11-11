@@ -22,9 +22,9 @@ pub trait SetResources {
         request: Option<S2>,
         limit: Option<S3>,
     ) where
-        S1: ToString,
-        S2: ToString,
-        S3: ToString;
+        S1: Into<String>,
+        S2: Into<String>,
+        S3: Into<String>;
 }
 
 impl SetResources for ResourceRequirements {
@@ -34,23 +34,30 @@ impl SetResources for ResourceRequirements {
         request: Option<S2>,
         limit: Option<S3>,
     ) where
-        S1: ToString,
-        S2: ToString,
-        S3: ToString,
+        S1: Into<String>,
+        S2: Into<String>,
+        S3: Into<String>,
     {
+        let resource_type = resource_type.into();
         match request {
-            Some(ref request) => self
-                .requests
-                .insert(resource_type.to_string(), Quantity(request.to_string())),
-
-            None => self.requests.remove(&resource_type.to_string()),
+            Some(request) => self.requests.use_or_create(|requests| {
+                requests.insert(resource_type.clone(), Quantity(request.into()));
+            }),
+            None => {
+                if let Some(requests) = &mut self.requests {
+                    requests.remove(&resource_type);
+                }
+            }
         };
         match limit {
-            Some(ref limit) => self
-                .limits
-                .insert(resource_type.to_string(), Quantity(limit.to_string())),
-
-            None => self.limits.remove(&resource_type.to_string()),
+            Some(limit) => self.limits.use_or_create(|limits| {
+                limits.insert(resource_type, Quantity(limit.into()));
+            }),
+            None => {
+                if let Some(limits) = &mut self.limits {
+                    limits.remove(&resource_type);
+                }
+            }
         };
     }
 }
@@ -62,9 +69,9 @@ impl SetResources for Container {
         request: Option<S2>,
         limit: Option<S3>,
     ) where
-        S1: ToString,
-        S2: ToString,
-        S3: ToString,
+        S1: Into<String>,
+        S2: Into<String>,
+        S3: Into<String>,
     {
         self.resources.use_or_create(|resources| {
             resources.set_resources(resource_type, request, limit);

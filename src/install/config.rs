@@ -10,6 +10,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
+use crate::utils::UseOrCreate;
 use k8s_openapi::{
     api::core::v1::{ConfigMap, Secret},
     ByteString,
@@ -50,13 +51,14 @@ impl<T: Into<String>> AppendString<T> for Secret {
         S: ToString,
         P: FnOnce() -> T,
     {
-        if keep_existing {
-            let entry = self.data.entry(key.to_string());
-            entry.or_insert(ByteString(provider().into().into_bytes()));
-        } else {
-            self.data
-                .insert(key.to_string(), ByteString(provider().into().into_bytes()));
-        }
+        self.data.use_or_create(|data| {
+            if keep_existing {
+                let entry = data.entry(key.to_string());
+                entry.or_insert(ByteString(provider().into().into_bytes()));
+            } else {
+                data.insert(key.to_string(), ByteString(provider().into().into_bytes()));
+            }
+        })
     }
 }
 
@@ -66,12 +68,14 @@ impl<T: Into<String>> AppendString<T> for ConfigMap {
         S: ToString,
         P: FnOnce() -> T,
     {
-        if keep_existing {
-            let entry = self.data.entry(key.to_string());
-            entry.or_insert(provider().into());
-        } else {
-            self.data.insert(key.to_string(), provider().into());
-        }
+        self.data.use_or_create(|data| {
+            if keep_existing {
+                let entry = data.entry(key.to_string());
+                entry.or_insert(provider().into());
+            } else {
+                data.insert(key.to_string(), provider().into());
+            }
+        });
     }
 }
 
@@ -110,13 +114,14 @@ impl<T: Into<Vec<u8>>> AppendBinary<T> for Secret {
         S: ToString,
         P: FnOnce() -> T,
     {
-        if keep_existing {
-            let entry = self.data.entry(key.to_string());
-            entry.or_insert(ByteString(provider().into()));
-        } else {
-            self.data
-                .insert(key.to_string(), ByteString(provider().into()));
-        }
+        self.data.use_or_create(|data| {
+            if keep_existing {
+                let entry = data.entry(key.to_string());
+                entry.or_insert(ByteString(provider().into()));
+            } else {
+                data.insert(key.to_string(), ByteString(provider().into()));
+            }
+        })
     }
 }
 
@@ -126,13 +131,14 @@ impl<T: Into<Vec<u8>>> AppendBinary<T> for ConfigMap {
         S: ToString,
         P: FnOnce() -> T,
     {
-        if keep_existing {
-            let entry = self.binary_data.entry(key.to_string());
-            entry.or_insert(ByteString(provider().into()));
-        } else {
-            self.binary_data
-                .insert(key.to_string(), ByteString(provider().into()));
-        }
+        self.binary_data.use_or_create(|binary_data| {
+            if keep_existing {
+                let entry = binary_data.entry(key.to_string());
+                entry.or_insert(ByteString(provider().into()));
+            } else {
+                binary_data.insert(key.to_string(), ByteString(provider().into()));
+            }
+        });
     }
 }
 
@@ -149,12 +155,12 @@ mod tests {
 
         let mut expected = BTreeMap::new();
         expected.insert("foo".into(), ByteString("bar".into()));
-        assert_eq!(cm.binary_data, expected);
+        assert_eq!(cm.binary_data.clone().unwrap_or_default(), expected);
 
         cm.append_string("foo", "bar2");
         let mut expected = BTreeMap::new();
         expected.insert("foo".into(), ByteString("bar2".into()));
-        assert_eq!(cm.binary_data, expected);
+        assert_eq!(cm.binary_data.clone().unwrap_or_default(), expected);
     }
 
     #[test]
@@ -164,10 +170,10 @@ mod tests {
 
         let mut expected = BTreeMap::new();
         expected.insert("foo".into(), ByteString("bar".into()));
-        assert_eq!(cm.binary_data, expected.clone());
+        assert_eq!(cm.binary_data.clone().unwrap_or_default(), expected.clone());
 
         cm.init_string("foo", "bar2");
-        assert_eq!(cm.binary_data, expected);
+        assert_eq!(cm.binary_data.clone().unwrap_or_default(), expected);
     }
 
     #[test]
