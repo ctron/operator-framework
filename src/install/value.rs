@@ -8,17 +8,84 @@ use k8s_openapi::api::core::v1::{
 use kube::{Api, Resource};
 use serde::{
     de::{self, DeserializeOwned, MapAccess, Visitor},
-    ser::SerializeStruct,
-    {Deserialize, Deserializer, Serialize, Serializer},
+    {Deserialize, Deserializer, Serialize},
 };
 use std::fmt::Debug;
 
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg(feature = "schemars")]
+use schemars::{
+    gen::SchemaGenerator,
+    schema::{
+        InstanceType, ObjectValidation, Schema, SchemaObject, SingleOrVec, SubschemaValidation,
+    },
+    JsonSchema,
+};
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ValueOrReference {
     Value(String),
     Secret(SecretKeySelector),
     ConfigMap(ConfigMapKeySelector),
+}
+
+#[cfg(feature = "schemars")]
+mod schema {
+    use schemars::schema::*;
+
+    pub(crate) fn required(name: &str) -> Schema {
+        Schema::Object(SchemaObject {
+            object: Some(Box::new(ObjectValidation {
+                required: {
+                    let mut r = schemars::Set::new();
+                    r.insert(name.into());
+                    r
+                },
+                ..Default::default()
+            })),
+            ..Default::default()
+        })
+    }
+}
+
+#[cfg(feature = "schemars")]
+impl JsonSchema for ValueOrReference {
+    fn schema_name() -> String {
+        "ValueOrReference".into()
+    }
+
+    fn json_schema(gen: &mut SchemaGenerator) -> Schema {
+        Schema::Object(SchemaObject {
+            instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::Object))),
+            object: Some(Box::new(ObjectValidation {
+                properties: {
+                    let mut p = schemars::Map::new();
+                    p.insert(
+                        "value".into(),
+                        Schema::Object(SchemaObject {
+                            instance_type: Some(SingleOrVec::Single(Box::new(
+                                InstanceType::String,
+                            ))),
+                            ..Default::default()
+                        }),
+                    );
+                    p.insert("secret".into(), <SecretKeySelector>::json_schema(gen));
+                    p.insert("configMap".into(), <ConfigMapKeySelector>::json_schema(gen));
+                    p
+                },
+                ..Default::default()
+            })),
+            subschemas: Some(Box::new(SubschemaValidation {
+                one_of: Some(vec![
+                    schema::required("value"),
+                    schema::required("secret"),
+                    schema::required("configMap"),
+                ]),
+                ..Default::default()
+            })),
+            ..Default::default()
+        })
+    }
 }
 
 #[async_trait]
@@ -195,9 +262,13 @@ impl<'de> Deserialize<'de> for ValueOrReference {
             {
                 if let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
+                        "value" => Ok(ValueOrReference::Value(map.next_value()?)),
                         "configMap" => Ok(ValueOrReference::ConfigMap(map.next_value()?)),
                         "secret" => Ok(ValueOrReference::Secret(map.next_value()?)),
-                        t => Err(de::Error::unknown_variant(t, &["configMap", "secret"])),
+                        t => Err(de::Error::unknown_variant(
+                            t,
+                            &["value", "configMap", "secret"],
+                        )),
                     }
                 } else {
                     Err(de::Error::custom("No value type present"))
@@ -206,27 +277,6 @@ impl<'de> Deserialize<'de> for ValueOrReference {
         }
 
         deserializer.deserialize_any(ValueVisitor)
-    }
-}
-
-impl Serialize for ValueOrReference {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            Self::Value(value) => serializer.serialize_str(value),
-            Self::ConfigMap(selector) => {
-                let mut s = serializer.serialize_struct("configMap", 1)?;
-                s.serialize_field("configMap", selector)?;
-                s.end()
-            }
-            Self::Secret(selector) => {
-                let mut s = serializer.serialize_struct("secret", 1)?;
-                s.serialize_field("secret", selector)?;
-                s.end()
-            }
-        }
     }
 }
 
@@ -255,7 +305,7 @@ mod test {
     }
 
     #[test]
-    fn test_value() -> Result<()> {
+    fn test_value_legacy() -> Result<()> {
         test_combination(
             MyCrd {
                 field_one: ValueOrReference::Value("foo".to_string()),
@@ -307,6 +357,22 @@ mod test {
                         "name": "foo",
                         "key": "bar",
                     }
+                }
+            }),
+        )?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_value() -> Result<()> {
+        test_combination(
+            MyCrd {
+                field_one: ValueOrReference::Value("fooBar".into()),
+            },
+            json!({
+                "fieldOne": {
+                    "value": "fooBar"
                 }
             }),
         )?;
