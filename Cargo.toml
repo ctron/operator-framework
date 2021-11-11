@@ -26,6 +26,7 @@ k8s-openapi = { version = "0.13" }
 either = "1.6"
 async-trait = "0.1"
 futures = "0.3"
+schemars = { version  = "0.8", optional = true }
 
 [dev-dependencies]
 
@@ -48,6 +49,8 @@ v1_19 = ["k8s-openapi/v1_19"]
 v1_20 = ["k8s-openapi/v1_20"]
 v1_21 = ["k8s-openapi/v1_21"]
 v1_22 = ["k8s-openapi/v1_22"]
+
+schemas = [ "schemars", "k8s-openapi/schemars" ]
 
 [patch.crates-io]
 #kube = { path = "../kube-rs/kube" }

@@ -14,6 +14,7 @@ use serde::{
 use std::fmt::Debug;
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub enum ValueOrReference {
     Value(String),
     Secret(SecretKeySelector),
