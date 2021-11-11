@@ -12,11 +12,17 @@
  */
 
 use crate::utils::UseOrCreate;
-use anyhow::anyhow;
-use k8s_openapi::{
-    apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference},
-    Metadata,
-};
+use anyhow::{anyhow, Error};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
+use std::borrow::Cow;
+
+pub trait Meta {
+    fn metadata(&self) -> &ObjectMeta;
+    fn metadata_mut(&mut self) -> &mut ObjectMeta;
+
+    fn kind(&self) -> Cow<'_, str>;
+    fn api_version(&self) -> Cow<'_, str>;
+}
 
 pub trait OwnedBy<R> {
     fn owned_by(
@@ -78,13 +84,13 @@ pub trait AsOwner {
 
 impl<K> AsOwner for K
 where
-    K: Metadata<Ty = ObjectMeta>,
+    K: Meta,
 {
     fn as_owner(
         &self,
         controller: Option<bool>,
         block_owner_deletion: Option<bool>,
-    ) -> Result<OwnerReference, anyhow::Error> {
+    ) -> Result<OwnerReference, Error> {
         let name = self
             .metadata()
             .name
@@ -99,8 +105,8 @@ where
             .clone();
 
         Ok(OwnerReference {
-            kind: Self::KIND.to_string(),
-            api_version: Self::API_VERSION.to_string(),
+            kind: self.kind().to_string(),
+            api_version: self.api_version().to_string(),
             name,
             uid,
             controller,
@@ -109,10 +115,31 @@ where
     }
 }
 
+impl<K> Meta for K
+where
+    K: kube::Resource<DynamicType = ()>,
+{
+    fn metadata(&self) -> &ObjectMeta {
+        self.meta()
+    }
+
+    fn metadata_mut(&mut self) -> &mut ObjectMeta {
+        self.meta_mut()
+    }
+
+    fn kind(&self) -> Cow<'_, str> {
+        Self::kind(&())
+    }
+
+    fn api_version(&self) -> Cow<'_, str> {
+        Self::api_version(&())
+    }
+}
+
 impl<K, R> OwnedBy<R> for K
 where
-    K: Metadata<Ty = ObjectMeta>,
-    R: Metadata<Ty = ObjectMeta>,
+    K: Meta,
+    R: Meta,
 {
     fn owned_by(
         &mut self,
