@@ -27,12 +27,15 @@ pub trait Delete<R: Send> {
     ///
     /// The function will return `true` if the resource was deleted (or already gone) and `false` if
     /// the resource is being delete. All other errors are returned unmodified.
-    async fn delete_optionally(&self, name: &str, dp: &DeleteParams) -> Result<bool, kube::Error>;
+    async fn delete_optionally<S>(&self, name: S, dp: &DeleteParams) -> Result<bool, kube::Error>
+    where
+        S: AsRef<str> + Send + Sync;
 
-    async fn delete_conditionally<F, E>(&self, name: &str, f: F) -> Result<bool, E>
+    async fn delete_conditionally<F, E, S>(&self, name: S, f: F) -> Result<bool, E>
     where
         F: FnOnce(&R) -> Result<bool, E> + Send,
-        E: From<kube::Error>;
+        E: From<kube::Error>,
+        S: AsRef<str> + Send + Sync;
 }
 
 #[async_trait]
@@ -40,9 +43,12 @@ impl<K> Delete<K> for Api<K>
 where
     K: Resource + Clone + DeserializeOwned + Send + Debug,
 {
-    async fn delete_optionally(&self, name: &str, dp: &DeleteParams) -> Result<bool, kube::Error> {
+    async fn delete_optionally<S>(&self, name: S, dp: &DeleteParams) -> Result<bool, kube::Error>
+    where
+        S: AsRef<str> + Send + Sync,
+    {
         Ok(self
-            .delete(name, dp)
+            .delete(name.as_ref(), dp)
             .map(|future| {
                 future
                     .map(|either| match either {
@@ -57,12 +63,13 @@ where
             .await?)
     }
 
-    async fn delete_conditionally<F, E>(&self, name: &str, f: F) -> Result<bool, E>
+    async fn delete_conditionally<F, E, S>(&self, name: S, f: F) -> Result<bool, E>
     where
         F: FnOnce(&K) -> Result<bool, E> + Send,
         E: From<kube::Error>,
+        S: AsRef<str> + Send + Sync,
     {
-        let resource = match self.get(name).await {
+        let resource = match self.get(name.as_ref()).await {
             Err(Error::Api(cause)) if cause.reason == "NotFound" => return Ok(false),
             result => result?,
         };
