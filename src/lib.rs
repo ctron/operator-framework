@@ -10,6 +10,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
+pub mod conditions;
 pub mod install;
 pub mod process;
 pub mod selectors;
