@@ -61,6 +61,12 @@ impl AsRef<[u8]> for TrackerState {
     }
 }
 
+impl From<TrackerState> for String {
+    fn from(state: TrackerState) -> Self {
+        state.0
+    }
+}
+
 impl Display for TrackerState {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0)
