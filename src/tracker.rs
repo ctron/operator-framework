@@ -35,7 +35,10 @@ impl ConfigTracker {
         ConfigTracker { sha: Sha1::new() }
     }
 
-    pub fn track(&mut self, data: &[u8]) {
+    pub fn track<D>(&mut self, data: D)
+    where
+        D: AsRef<[u8]>,
+    {
         self.sha.update(data);
     }
 
@@ -43,6 +46,7 @@ impl ConfigTracker {
         self.sha.clone().digest().to_string()
     }
 
+    /// Freeze the current tracker state and return it.
     pub fn freeze(self) -> TrackerState {
         TrackerState(self.current_hash())
     }
@@ -51,9 +55,21 @@ impl ConfigTracker {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TrackerState(pub String);
 
+impl AsRef<[u8]> for TrackerState {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+}
+
 impl Display for TrackerState {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, self.0)
+    }
+}
+
+impl Trackable for TrackerState {
+    fn track_with(&self, tracker: &mut ConfigTracker) {
+        tracker.track(self.0.as_bytes())
     }
 }
 
