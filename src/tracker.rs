@@ -14,6 +14,7 @@ use k8s_openapi::api::core::v1::{ConfigMap, Secret};
 use k8s_openapi::ByteString;
 use sha1::Sha1;
 use std::collections::BTreeMap;
+use std::fmt::{Display, Formatter};
 
 /// Tracking content changes of configurations.
 ///
@@ -40,6 +41,19 @@ impl ConfigTracker {
 
     pub fn current_hash(&self) -> String {
         self.sha.clone().digest().to_string()
+    }
+
+    pub fn freeze(self) -> TrackerState {
+        TrackerState(self.current_hash())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TrackerState(pub String);
+
+impl Display for TrackerState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, self.0)
     }
 }
 
