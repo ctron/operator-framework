@@ -39,7 +39,7 @@ impl ConfigTracker {
     where
         D: AsRef<[u8]>,
     {
-        self.sha.update(data);
+        self.sha.update(data.as_ref());
     }
 
     pub fn current_hash(&self) -> String {
@@ -63,7 +63,7 @@ impl AsRef<[u8]> for TrackerState {
 
 impl Display for TrackerState {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, self.0)
+        f.write_str(&self.0)
     }
 }
 
