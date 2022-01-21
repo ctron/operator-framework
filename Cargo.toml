@@ -13,7 +13,7 @@ repository = "https://github.com/ctron/operator-framework"
 anyhow = "1.0"
 log = "0.4"
 
-kube = { version = "0.63", features = ["derive"] }
+kube = { version = "0.66", features = ["derive"] }
 
 serde = "1.0"
 serde_derive = "1.0"
