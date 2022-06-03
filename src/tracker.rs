@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Jens Reimann and others.
+ * Copyright (c) 2020, 2022 Jens Reimann and others.
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -10,11 +10,15 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-use k8s_openapi::api::core::v1::{ConfigMap, Secret};
-use k8s_openapi::ByteString;
-use sha1::Sha1;
-use std::collections::BTreeMap;
-use std::fmt::{Display, Formatter};
+use k8s_openapi::{
+    api::core::v1::{ConfigMap, Secret},
+    ByteString,
+};
+use sha1::{Digest, Sha1};
+use std::{
+    collections::BTreeMap,
+    fmt::{Display, Formatter},
+};
 
 /// Tracking content changes of configurations.
 ///
@@ -43,7 +47,7 @@ impl ConfigTracker {
     }
 
     pub fn current_hash(&self) -> String {
-        self.sha.clone().digest().to_string()
+        format!("{:x}", self.sha.clone().finalize())
     }
 
     /// Freeze the current tracker state and return it.
@@ -108,5 +112,19 @@ impl Trackable for ConfigMap {
         if let Some(data) = &self.data {
             data.track_with(tracker);
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test() {
+        let tracker = ConfigTracker::new();
+        assert_eq!(
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            tracker.current_hash()
+        );
     }
 }
